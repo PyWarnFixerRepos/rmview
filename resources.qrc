@@ -7,5 +7,6 @@
     <file>assets/connecting.png</file>
     <file>bin/rM1-vnc-server-standalone</file>
     <file>bin/rM2-vnc-server-standalone</file>
+    <file>bin/restream.arm.static</file>
 </qresource>
 </RCC>

@@ -7,6 +7,7 @@ from . import resources
 from .screenstream.common import KEY_Left, KEY_Right, KEY_Escape
 from .screenstream.vnc import VncStreamer
 from .screenstream.screenshare import ScreenShareStream
+from .screenstream.restream import ReStreamer
 from .pentracker import PenTracker
 from .connection import rMConnect, RejectNewHostKey, AddNewHostKey, UnknownHostKeyException
 from .viewer import QtImageViewer
@@ -321,7 +322,7 @@ class rMViewApp(QApplication):
       else:
         backend = 'vncserver'
         if ssh.softwareVersion >= (2, 7, 0, 0):
-          log.warning("Detected version 2.7 or 2.8. The server might not work with these versions.")
+          backend == 'restream'
 
     log.info("Using backend '%s'", backend)
     if backend == 'screenshare':
@@ -334,6 +335,8 @@ class rMViewApp(QApplication):
     elif backend == 'vncserver':
       self.fbworker = VncStreamer(ssh, ssh_config=self.config.get('ssh', {}),
                                        delay=self.config.get('fetch_frame_delay'))
+    elif backend == 'restream':
+      self.fbworker = ReStreamer(ssh, ssh_config=self.config.get('ssh', {}))
 
     self.fbworker.signals.onNewFrame.connect(self.onNewFrame)
     self.fbworker.signals.onFatalError.connect(self.frameError)

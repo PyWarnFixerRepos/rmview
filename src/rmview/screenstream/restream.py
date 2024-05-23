@@ -79,41 +79,43 @@ class ReStreamer(QRunnable):
 
     # rm_version="$(ssh_cmd cat /sys/devices/soc0/machine)"
 
-    # case "$rm_version" in
-    #     "reMarkable 1.0")
-    width = 1408
-    height = 1872
-    bytes_per_pixel = 2
-    fb_file = "/dev/fb0"
-    # pixel_format = "rgb565le"
-    img_format = QImage.Format_RGB16
-    #         ;;
-    #     "reMarkable 2.0")
-    #         if ssh_cmd "[ -f /dev/shm/swtfb.01 ]"; then
-    #             width=1404
-    #             height=1872
-    #             bytes_per_pixel=2
-    #             fb_file="/dev/shm/swtfb.01"
-    #             pixel_format="rgb565le"
-    #         else
-    #             width=1872
-    #             height=1404
-    #             fb_file=":mem:"
-
-    #             # Use updated video settings?
-    #             if is_current_rm_firmware_version_ge $rm2_old_firmware_version; then
-    #                 echo "Using the newer :mem: video settings."
-    #                 bytes_per_pixel=2
-    #                 pixel_format="gray16be"
-    #                 video_filters="$video_filters colorlevels=rimin=0:rimax=29/255:gimin=0:gimax=29/255:bimin=0:bimax=29/255,transpose=3"
-    #             # Use the previous video settings.
-    #             else
-    #                 echo "Using the older :mem: video settings."
-    #                 bytes_per_pixel=1
-    #                 pixel_format="gray8"
-    #                 video_filters="$video_filters,transpose=2"
-    #             fi
-    #         fi
+    if self.ssh.deviceVersion == 1:
+      width = 1408
+      height = 1872
+      bytes_per_pixel = 2
+      fb_file = "/dev/fb0"
+      # pixel_format = "rgb565le"
+      img_format = QImage.Format_RGB16
+    if self.ssh.deviceVersion == 2:
+      _, out, _ = self.ssh.exec_command("[ -f /dev/shm/swtfb.01 ]")
+      oldmem = out.channel.recv_exit_status()
+      if oldmem == 0:
+        width = 1404
+        height = 1872
+        bytes_per_pixel = 2
+        fb_file="/dev/shm/swtfb.01"
+        # pixel_format="rgb565le"
+        img_format = QImage.Format_RGB16
+      else:
+        # WARNING: Completely untested
+        width = 1872
+        height = 1404
+        fb_file = ":mem:"
+        if self.ssh.softwareVersion >= (3, 7, 0, 1930):
+          log.info("Using the newer :mem: video settings.")
+          bytes_per_pixel=2
+          # pixel_format="gray16be"
+          img_format = QImage.Format_RGB16
+          # 90Clockwise and Vertical Flip [transpose=3]
+          # TODO: It seems we need to convert from big-endian to little-endian
+          # TODO: Need to perform a vertical flip and rotate
+        else:
+          log.info("Using the older :mem: video settings.")
+          bytes_per_pixel=1
+          # pixel_format="gray8"
+          img_format = QImage.Format_Grayscale8 # >= PyQT 5.5
+          # 90CounterClockwise [transpose=2]
+          # TODO: Need to perform a rotation
     total_bytes = width * height * bytes_per_pixel
 
     restream = f"$HOME/restream -h {height} -w {width} -b {bytes_per_pixel} -f {fb_file} "
